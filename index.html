@@ -1,348 +1,217 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UrbanScan AI — Urban Asset Detection System</title>
+  <title>UrbanScan AI</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
 
-<!-- HEADER -->
-<header id="header">
-  <div class="logo">UrbanScan<span> AI</span></div>
-  <div class="header-right">
-    <div class="api-badges">
-      <span class="api-badge">Sentinel-2</span>
-      <span class="api-badge">Bhuvan</span>
-      <span class="api-badge">G.Maps</span>
-      <span class="api-badge">NASA GIBS</span>
-      <span class="api-badge">USGS</span>
-      <span class="api-badge">CARTO</span>
-    </div>
-    <span id="clock"></span>
-    <button id="theme-btn" onclick="toggleTheme()">☀ Light</button>
-  </div>
-</header>
+<body class="flex h-screen w-screen overflow-hidden text-sm">
 
-<!-- LAYOUT -->
-<div id="layout">
+  <div id="toast">Message</div>
 
   <!-- SIDEBAR -->
-  <nav id="sidebar">
-    <div id="sidebar-header">
-      <span id="sidebar-title">UrbanScan AI</span>
-      <button id="collapse-btn" onclick="toggleSidebar()" title="Toggle sidebar">
-        <svg id="collapse-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
+  <aside class="w-64 glass-panel border-r border-glass-border flex flex-col z-20 shrink-0">
+    <div class="h-16 flex items-center px-6 border-b border-glass-border">
+      <i class="fa-solid fa-satellite-dish text-blue-500 text-xl mr-3"></i>
+      <h1 class="font-bold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+        UrbanScan <span class="text-white font-light">AI</span>
+      </h1>
     </div>
-    <div id="sidebar-nav">
-      <button class="nav-item active" onclick="showSection('upload')" id="nav-upload" title="Upload Image">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-        <span class="nav-label">Upload Image</span>
-      </button>
-      <button class="nav-item" onclick="showSection('results')" id="nav-results" title="Detection Results">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-        <span class="nav-label">Detection Results</span>
-      </button>
-      <button class="nav-item" onclick="showSection('map')" id="nav-map" title="GIS Map">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        <span class="nav-label">GIS Map</span>
-      </button>
-      <button class="nav-item" onclick="showSection('export')" id="nav-export" title="Export Data">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        <span class="nav-label">Export Data</span>
-      </button>
-      <button class="nav-item" onclick="showSection('change')" id="nav-change" title="Change Detection">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-        <span class="nav-label">Change Detection</span>
-      </button>
-    </div>
-    <div id="sidebar-footer">
-      <div class="status-pill">
-        <div class="status-dot"></div>
-        <span class="status-text">System Online</span>
+
+    <div class="px-6 py-4 border-b border-glass-border flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+        <span class="text-xs font-mono text-gray-400 uppercase tracking-widest">Sys Online</span>
       </div>
+      <span id="sys-clock" class="text-xs font-mono text-blue-400">00:00:00</span>
     </div>
-  </nav>
+
+    <nav class="flex-1 py-4 flex flex-col gap-1 px-3">
+      <button onclick="switchTab('scanner')" id="tab-scanner"
+        class="nav-item active flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+        <i class="fa-solid fa-expand w-5 text-center"></i>
+        <span class="font-medium">Vision Scanner</span>
+      </button>
+
+      <button onclick="switchTab('inventory')" id="tab-inventory"
+        class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+        <i class="fa-solid fa-database w-5 text-center"></i>
+        <span class="font-medium">Asset Inventory</span>
+      </button>
+
+      <button onclick="switchTab('map')" id="tab-map"
+        class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+        <i class="fa-solid fa-map-location-dot w-5 text-center"></i>
+        <span class="font-medium">GIS Overview</span>
+      </button>
+    </nav>
+  </aside>
 
   <!-- MAIN -->
-  <main id="main">
+  <main class="flex-1 relative flex flex-col z-10 h-full overflow-hidden p-6 gap-6">
 
-    <!-- ─── UPLOAD ─────────────────────────────────────────── -->
-    <section class="section active" id="section-upload">
-      <div class="section-title">Target Imagery Acquisition</div>
-      <div class="section-sub">Upload high-resolution satellite or drone imagery for autonomous urban asset classification.</div>
+    <!-- SCANNER -->
+    <section id="pane-scanner" class="section-pane active flex-col h-full gap-6">
 
-      <div id="upload-zone" onclick="document.getElementById('file-input').click()"
-           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-        <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg" onchange="onFileChange(event)"/>
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-        </svg>
-        <div class="upload-title">Drag & Drop Satellite / Drone Image</div>
-        <div class="upload-sub">or click to browse</div>
-        <div class="upload-sub">Supports JPG, PNG (Max 50MB)</div>
-        <div class="source-badges">
-          <span class="source-badge">Sentinel-2 (ESA)</span>
-          <span class="source-badge">Bhuvan (ISRO)</span>
-          <span class="source-badge">Google Maps Static</span>
-          <span class="source-badge">OpenAerialMap</span>
-          <span class="source-badge">NASA GIBS</span>
-          <span class="source-badge">USGS</span>
-        </div>
-      </div>
+      <div class="flex justify-between items-end">
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-1">
+            Autonomous Asset Digitization
+          </h2>
 
-      <div id="preview-card">
-        <div class="file-meta">
-          <div class="file-meta-left">
-            <div class="file-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-              </svg>
-            </div>
-            <div>
-              <div class="file-name" id="file-name-display"></div>
-              <div class="file-size" id="file-size-display"></div>
-            </div>
-          </div>
-          <button class="clear-btn" onclick="clearImage()" title="Remove image">
-            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
-          </button>
-        </div>
-        <img id="preview-img" alt="Uploaded image preview"/>
-      </div>
-
-      <div id="detect-area">
-        <span id="status-msg"></span>
-        <button class="btn btn-primary btn-lg" id="run-btn" disabled onclick="runDetection()">
-          Run AI Detection
-        </button>
-      </div>
-    </section>
-
-    <!-- ─── RESULTS ─────────────────────────────────────────── -->
-    <section class="section" id="section-results">
-      <div class="section-title">Detection Results</div>
-      <div class="section-sub" id="results-sub">AI-powered urban asset classification output.</div>
-
-      <div id="results-empty" class="empty-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;display:block;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
-        <p style="margin-bottom:16px;">No detection results yet. Upload an image and run AI detection first.</p>
-        <button class="btn btn-primary" onclick="showSection('upload')">Go to Upload</button>
-      </div>
-
-      <div id="results-content" class="hidden">
-        <div class="cards-grid">
-          <div class="card red">
-            <div class="card-header"><span class="card-label">Buildings Detected</span></div>
-            <div class="card-value" id="val-buildings">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-buildings">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-buildings"></div></div>
-          </div>
-          <div class="card yellow">
-            <div class="card-header"><span class="card-label">Roads Detected</span></div>
-            <div class="card-value" id="val-roads">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-roads">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-roads"></div></div>
-          </div>
-          <div class="card green">
-            <div class="card-header"><span class="card-label">Trees Detected</span></div>
-            <div class="card-value" id="val-trees">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-trees">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-trees"></div></div>
-          </div>
-          <div class="card blue">
-            <div class="card-header"><span class="card-label">Water Bodies</span></div>
-            <div class="card-value" id="val-water">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-water">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-water"></div></div>
-          </div>
-        </div>
-
-        <div class="seg-panel">
-          <div class="panel-title">
-            Segmentation Overlay
-            <span style="font-size:12px;font-weight:400;color:var(--text-muted)">YOLOv8-seg · pseudo-color map</span>
-          </div>
-          <div class="seg-images">
-            <div class="seg-img-block">
-              <p>Original Image</p>
-              <div class="seg-img-wrap"><img id="seg-original" alt="Original"/></div>
-            </div>
-            <div class="seg-img-block">
-              <p>Segmentation Map</p>
-              <div class="seg-img-wrap"><canvas id="seg-canvas"></canvas></div>
-            </div>
-          </div>
-          <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Buildings</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Roads</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Trees / Vegetation</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Water Bodies</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ─── MAP ─────────────────────────────────────────────── -->
-    <section class="section" id="section-map">
-      <div class="section-title">GIS Map Overlay</div>
-      <div class="section-sub">Multi-source free satellite & basemap imagery — 16 layers, zero API key required.</div>
-
-      <div class="layer-filter">
-        <span>Filter:</span>
-        <button class="lf-btn active" onclick="setLayerGroup('all',this)">All</button>
-        <button class="lf-btn" onclick="setLayerGroup('satellite',this)">Satellite</button>
-        <button class="lf-btn" onclick="setLayerGroup('base',this)">Base</button>
-      </div>
-
-      <div class="layer-btns" id="layer-btns"></div>
-
-      <div id="map-container">
-        <div id="leaflet-map"></div>
-        <div id="map-active-badge">ESRI Satellite</div>
-        <div id="map-legend">
-          <h4>Detection Legend</h4>
-          <div class="ml"><div class="ml-dot" style="background:#ef4444"></div><span>Buildings</span></div>
-          <div class="ml"><div class="ml-dot" style="background:#eab308"></div><span>Roads</span></div>
-          <div class="ml"><div class="ml-dot" style="background:#22c55e"></div><span>Trees</span></div>
-          <div class="ml"><div class="ml-dot" style="background:#3b82f6"></div><span>Water</span></div>
-        </div>
-      </div>
-
-      <div style="margin-top:16px;background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-        <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">
-          Free Satellite & Basemap APIs — No API Key Required
-        </div>
-        <div class="api-grid" id="api-ref-grid"></div>
-      </div>
-    </section>
-
-    <!-- ─── EXPORT ───────────────────────────────────────────── -->
-    <section class="section" id="section-export">
-      <div class="section-title">Export Data</div>
-      <div class="section-sub">Export detection results in GIS-compatible formats for downstream analysis.</div>
-      <div class="export-panel">
-        <div class="export-header">
-          <h3>Export Formats</h3>
-          <span id="last-exported"></span>
-        </div>
-        <div class="export-grid">
-          <button class="export-btn" id="btn-geojson" disabled onclick="exportGeoJSON()">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-            </svg>
-            Export GeoJSON
-            <span class="export-sub">GIS-compatible</span>
-          </button>
-          <button class="export-btn" id="btn-csv" disabled onclick="exportCSV()">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18"/>
-            </svg>
-            Export CSV
-            <span class="export-sub">Spreadsheet-ready</span>
-          </button>
-          <button class="export-btn" id="btn-json" disabled onclick="exportJSON()">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#eab308" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Export JSON
-            <span class="export-sub">Raw detection data</span>
-          </button>
-          <button class="export-btn" disabled>
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#ef4444" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            Export Shapefile
-            <span class="export-sub">Coming soon</span>
-          </button>
-        </div>
-        <div id="export-summary" class="hidden" style="margin-top:20px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Detection Summary</div>
-          <div class="summary-grid">
-            <div><div class="summary-val" style="color:#ef4444" id="sum-buildings">—</div><div class="summary-lbl">Buildings</div></div>
-            <div><div class="summary-val" style="color:#eab308" id="sum-roads">—</div><div class="summary-lbl">Roads</div></div>
-            <div><div class="summary-val" style="color:#22c55e" id="sum-trees">—</div><div class="summary-lbl">Trees</div></div>
-            <div><div class="summary-val" style="color:#3b82f6" id="sum-water">—</div><div class="summary-lbl">Water</div></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ─── CHANGE DETECTION ──────────────────────────────────── -->
-    <section class="section" id="section-change">
-      <div class="section-title">Change Detection</div>
-      <div class="section-sub">Compare before/after satellite imagery to detect urban change over time.</div>
-      <div class="change-panel">
-        <div class="change-header">
-          <h3>Temporal Change Analysis</h3>
-          <p>Upload two images from different time periods to detect new construction, demolition, and vegetation changes.</p>
-        </div>
-        <div class="change-uploads">
-          <div class="mini-drop-box">
-            <label class="mini-label">Before (T1)</label>
-            <input type="file" id="before-input" accept="image/*" onchange="handleChangeFile(event,'before')" style="display:none"/>
-            <div class="mini-drop" id="before-drop" onclick="document.getElementById('before-input').click()">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <span>Upload before image</span>
-            </div>
-          </div>
-          <div class="arrow-sep">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-          </div>
-          <div class="mini-drop-box">
-            <label class="mini-label">After (T2)</label>
-            <input type="file" id="after-input" accept="image/*" onchange="handleChangeFile(event,'after')" style="display:none"/>
-            <div class="mini-drop" id="after-drop" onclick="document.getElementById('after-input').click()">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <span>Upload after image</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
-          <button class="btn btn-primary" id="change-run-btn" disabled onclick="runChangeDetection()">
-            Run Change Detection
-          </button>
-        </div>
-
-        <div id="change-results" class="hidden">
-          <div class="change-stats">
-            <div class="stat-card">
-              <div class="stat-label">New Construction</div>
-              <div class="stat-value" id="stat-new" style="color:var(--red)">—</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Demolished</div>
-              <div class="stat-value" id="stat-demo" style="color:var(--yellow)">—</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Vegetation Loss</div>
-              <div class="stat-value" id="stat-veg" style="color:var(--green)">—</div>
-            </div>
-          </div>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">
-            Change Heatmap — <span style="color:#ef4444">Red = new construction</span> &nbsp;·&nbsp;
-            <span style="color:#22c55e">Green = removed vegetation</span>
+          <p class="text-gray-400 mb-3">
+            Upload imagery and filter detected elements.
           </p>
-          <div class="diff-wrap"><canvas id="diff-canvas"></canvas></div>
+
+          <div class="flex gap-2" id="global-filters">
+            <button onclick="setFilter('All')" class="filter-btn active bg-blue-500/20 text-blue-300">All</button>
+            <button onclick="setFilter('Property')" class="filter-btn">Property</button>
+            <button onclick="setFilter('Roads/Footpaths')" class="filter-btn">Roads</button>
+            <button onclick="setFilter('Open Parks')" class="filter-btn">Parks</button>
+            <button onclick="setFilter('Water Bodies')" class="filter-btn">Water</button>
+          </div>
         </div>
+
+        <div class="flex gap-3">
+          <button id="btn-clear" onclick="clearImage()"
+            class="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 hidden transition-colors">
+            <i class="fa-solid fa-trash-can mr-2"></i>Clear
+          </button>
+
+          <button id="btn-run" onclick="runAIScan()" disabled
+            class="glass-button px-6 py-2 rounded-lg font-semibold text-white shadow-lg flex items-center">
+            <i class="fa-solid fa-microchip mr-2"></i> Run AI
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-1 gap-6 min-h-0">
+
+        <!-- CANVAS -->
+        <div class="flex-[2] glass-panel rounded-xl flex flex-col p-2 relative">
+
+          <div id="upload-state"
+            class="absolute inset-0 m-4 border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/10 transition-all z-20"
+            onclick="document.getElementById('file-input').click()">
+
+            <div class="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 text-blue-400">
+              <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+            </div>
+
+            <h3 class="text-lg font-semibold text-white mb-2">
+              Upload Image
+            </h3>
+
+            <input type="file" id="file-input" class="hidden" accept="image/*"
+              onchange="handleFileSelect(event)">
+          </div>
+
+          <div id="canvas-container"
+            class="hidden w-full h-full bg-black/40 flex items-center justify-center relative">
+            <div class="scan-line"></div>
+            <canvas id="main-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="flex-1 flex flex-col gap-4 min-h-0">
+
+          <div class="glass-panel rounded-xl p-5 flex flex-col">
+            <h3 class="font-semibold text-gray-200 mb-4">
+              Asset Summary
+            </h3>
+
+            <div class="flex-1 relative min-h-[180px]">
+              <canvas id="stats-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-xl p-5 flex-1 overflow-y-auto">
+            <h3 class="font-semibold text-gray-200 mb-3">
+              Logs
+            </h3>
+
+            <div id="terminal-logs"
+              class="font-mono text-xs text-gray-400 flex flex-col gap-2">
+              <div class="text-blue-400">
+                > System initialized
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section id="pane-inventory" class="section-pane flex-col h-full gap-6">
+
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-1">
+          Asset Inventory
+        </h2>
+      </div>
+
+      <div class="flex-1 glass-panel rounded-xl overflow-hidden flex flex-col">
+        <div class="overflow-y-auto flex-1 p-0">
+
+          <table class="w-full text-left">
+            <thead class="text-xs uppercase text-gray-400 bg-black/20">
+              <tr>
+                <th class="px-6 py-4">ID</th>
+                <th class="px-6 py-4">Class</th>
+                <th class="px-6 py-4">Confidence</th>
+                <th class="px-6 py-4">Coords</th>
+              </tr>
+            </thead>
+
+            <tbody id="inventory-body" class="divide-y divide-glass-border text-gray-300">
+              <tr>
+                <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                  No assets detected.
+                </td>
+              </tr>
+            </tbody>
+
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAP -->
+    <section id="pane-map" class="section-pane flex-col h-full gap-6">
+
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-1">
+          GIS Overview
+        </h2>
+      </div>
+
+      <div class="flex-1 glass-panel rounded-xl p-2 relative">
+        <div id="leaflet-map" class="w-full h-full rounded-lg bg-gray-900 z-0"></div>
       </div>
     </section>
 
   </main>
-</div>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
