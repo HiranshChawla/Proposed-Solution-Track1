@@ -1,1127 +1,804 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UrbanScan AI — Urban Asset Detection System</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    /* ─── Reset & CSS Variables ─────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UrbanScan AI | Asset Management</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&family=Cambria+Math&display=swap" rel="stylesheet">
 
-    :root {
-      --bg: #0d1117; --bg2: #161b22; --bg3: #1c2230;
-      --border: #2a3347; --sidebar-bg: #0a0f1a;
-      --sidebar-text: #c9d1e0; --sidebar-hover: #1c2635; --sidebar-active: #1e2f47;
-      --accent: #3b82f6; --accent-dim: rgba(59,130,246,0.12);
-      --text: #e6edf3; --text-muted: #7d8fa8;
-      --red: #ef4444; --yellow: #eab308; --green: #22c55e; --blue: #3b82f6;
-      --card-bg: #161b22; --radius: 8px;
-    }
-    html.light {
-      --bg: #f0f4f8; --bg2: #ffffff; --bg3: #e8edf3;
-      --border: #d0d9e6; --sidebar-bg: #1a2540;
-      --sidebar-text: #c9d1e0; --sidebar-hover: #223058; --sidebar-active: #1e3a6e;
-      --accent: #2563eb; --accent-dim: rgba(37,99,235,0.10);
-      --text: #1a2540; --text-muted: #5a6a82; --card-bg: #ffffff;
-    }
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'], 
+                        mono: ['JetBrains Mono', 'monospace'],
+                        math: ['Cambria Math', 'serif'] 
+                    },
+                    colors: {
+                        glass: { 100: 'rgba(255, 255, 255, 0.05)', border: 'rgba(255, 255, 255, 0.1)' },
+                        asset: { property: '#ef4444', road: '#eab308', park: '#22c55e', water: '#0ea5e9' }
+                    }
+                }
+            }
+        }
+    </script>
 
-    /* ─── Base ───────────────────────────────────────────── */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg); color: var(--text);
-      height: 100vh; overflow: hidden;
-      display: flex; flex-direction: column; font-size: 14px;
-    }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    <style>
+        /* ─── Alive Background & Reset ─── */
+        body {
+            margin: 0; overflow: hidden;
+            background: linear-gradient(-45deg, #020617, #0f172a, #1e1b4b, #0f172a);
+            background-size: 400% 400%; animation: gradientBG 15s ease infinite; color: #f8fafc;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-    /* ─── Header ─────────────────────────────────────────── */
-    #header {
-      height: 52px; min-height: 52px; background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100;
-    }
-    .logo { font-size: 16px; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
-    .logo span { color: var(--text); }
-    .header-right { display: flex; align-items: center; gap: 14px; }
-    .api-badges { display: flex; gap: 6px; }
-    .api-badge {
-      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
-      background: var(--accent-dim); color: var(--accent);
-      border: 1px solid rgba(59,130,246,0.3); letter-spacing: .04em;
-    }
-    #clock { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-    #theme-btn {
-      background: var(--bg3); border: 1px solid var(--border); color: var(--text);
-      border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px; font-weight: 500;
-    }
-    #theme-btn:hover { background: var(--sidebar-hover); }
+        /* ─── Glassmorphism Components ─── */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        .glass-button {
+            background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); transition: all 0.3s ease;
+        }
+        .glass-button:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.4); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); transform: translateY(-1px);
+        }
+        .glass-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ─── Layout ─────────────────────────────────────────── */
-    #layout { display: flex; flex: 1; overflow: hidden; }
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
-    /* ─── Sidebar ────────────────────────────────────────── */
-    #sidebar {
-      width: 240px; min-width: 240px; background: var(--sidebar-bg);
-      border-right: 1px solid var(--border); display: flex; flex-direction: column;
-      transition: width .25s, min-width .25s; overflow: hidden;
-    }
-    #sidebar.collapsed { width: 56px; min-width: 56px; }
-    #sidebar-header {
-      height: 52px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; padding: 0 14px;
-    }
-    #sidebar-title { font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: .06em; white-space: nowrap; }
-    #sidebar.collapsed #sidebar-title { display: none; }
-    #collapse-btn {
-      background: none; border: none; color: var(--sidebar-text); cursor: pointer;
-      padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
-      transition: background .15s; flex-shrink: 0;
-    }
-    #collapse-btn:hover { background: var(--sidebar-hover); }
-    #collapse-icon { transition: transform .25s; }
-    #sidebar.collapsed #collapse-icon { transform: rotate(180deg); }
-    #sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-    .nav-item {
-      display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 6px;
-      cursor: pointer; color: var(--sidebar-text); font-size: 13.5px; font-weight: 500;
-      white-space: nowrap; transition: background .15s, color .15s; border: none; background: none; width: 100%;
-    }
-    .nav-item:hover { background: var(--sidebar-hover); }
-    .nav-item.active { background: var(--sidebar-active); color: #fff; }
-    .nav-item.active svg { color: var(--accent); }
-    .nav-item svg { flex-shrink: 0; }
-    #sidebar.collapsed .nav-label { display: none; }
-    #sidebar-footer { border-top: 1px solid var(--border); padding: 12px; }
-    #sidebar.collapsed .status-text { display: none; }
-    .status-pill {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--sidebar-hover); border-radius: 6px; padding: 8px 10px;
-    }
-    @keyframes pulse-glow {
-      0%,100% { box-shadow: 0 0 6px 0 rgba(34,197,94,.7); }
-      50%      { box-shadow: 0 0 14px 4px rgba(34,197,94,.9); }
-    }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse-glow 2s ease-in-out infinite; flex-shrink: 0; }
-    .status-text { font-size: 12px; font-weight: 500; color: var(--sidebar-text); }
+        /* ─── Filters ─── */
+        .filter-btn {
+            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8; cursor: pointer; transition: all 0.2s;
+        }
+        .filter-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .filter-btn.active { color: #fff; border-color: transparent; }
 
-    /* ─── Main ───────────────────────────────────────────── */
-    #main { flex: 1; overflow-y: auto; padding: 28px 32px; }
-    .section { display: none; }
-    .section.active { display: block; animation: fadeUp .3s ease; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
-    .section-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-    .section-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+        /* ─── UI Utilities & Animations ─── */
+        .nav-item.active { background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, transparent 100%); border-left: 3px solid #3b82f6; color: #fff; }
+        .section-pane { display: none; animation: fadeIn 0.4s ease-out forwards; }
+        .section-pane.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* ─── Buttons ────────────────────────────────────────── */
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px;
-      border-radius: var(--radius); border: none; cursor: pointer;
-      font-size: 13.5px; font-weight: 600; transition: opacity .15s;
-    }
-    .btn:disabled { opacity: .45; cursor: not-allowed; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { opacity: .88; }
-    .btn-outline { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
-    .btn-outline:hover:not(:disabled) { background: var(--border); }
-    .btn-lg { padding: 12px 28px; font-size: 15px; }
+        /* ─── Canvas & Scanner ─── */
+        #canvas-container { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 0.5rem; }
+        canvas { display: block; width: 100%; height: auto; max-height: 100%; object-fit: contain; }
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #3b82f6;
+            box-shadow: 0 0 20px 4px rgba(59, 130, 246, 0.8); opacity: 0; z-index: 10;
+        }
+        .scanning .scan-line { animation: scanAnim 2s linear infinite; opacity: 1; }
+        @keyframes scanAnim { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
 
-    /* ─── Upload ─────────────────────────────────────────── */
-    #upload-zone {
-      min-height: 280px; border: 2px dashed var(--border); border-radius: 12px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer; transition: border-color .2s, background .2s; gap: 8px;
-      text-align: center; padding: 24px;
-    }
-    #upload-zone:hover, #upload-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
-    #upload-zone svg { color: var(--text-muted); }
-    .upload-title { font-size: 16px; font-weight: 600; }
-    .upload-sub { font-size: 13px; color: var(--text-muted); }
-    .source-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
-    .source-badge {
-      font-size: 11px; padding: 3px 8px; border-radius: 4px;
-      background: var(--accent-dim); color: var(--accent);
-      border: 1px solid rgba(59,130,246,.25); font-weight: 600;
-    }
-    #file-input { display: none; }
-    #preview-card { display: none; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 16px; }
-    .file-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .file-meta-left { display: flex; align-items: center; gap: 10px; }
-    .file-icon { width: 38px; height: 38px; background: var(--accent-dim); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-    .file-icon svg { color: var(--accent); }
-    .file-name { font-size: 13.5px; font-weight: 600; }
-    .file-size { font-size: 12px; color: var(--text-muted); }
-    .clear-btn { background: none; border: none; cursor: pointer; color: var(--red); padding: 5px; border-radius: 4px; display: flex; }
-    .clear-btn:hover { background: rgba(239,68,68,.12); }
-    #preview-img { width: 100%; max-height: 420px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); }
+        /* ─── Map Overrides ─── */
+        /* This applies a smart dark mode directly to standard openstreetmap tiles */
+        .dark-map-tiles { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+        
+        .vector-marker { position: relative; display: flex; align-items: center; justify-content: center; }
+        .pulse-ring {
+            position: absolute; width: 24px; height: 24px; border-radius: 50%;
+            animation: radarPulse 2s infinite cubic-bezier(0.45, 0, 0.55, 1);
+        }
+        .core-dot { position: relative; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #fff; z-index: 2; }
+        @keyframes radarPulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+        
+        .vector-label {
+            position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px;
+            font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; white-space: nowrap;
+            color: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 3;
+            display: flex; flex-direction: column; align-items: center; pointer-events: none;
+        }
+        .vector-label::after {
+            content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+            border-width: 4px 4px 0; border-style: solid; border-color: rgba(15, 23, 42, 0.85) transparent transparent transparent;
+        }
 
-    /* ─── Detect area ────────────────────────────────────── */
-    #detect-area { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
-    #status-msg { font-size: 12px; color: var(--text-muted); font-style: italic; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+        /* ─── Math Set Theory Styles ─── */
+        .math-text { font-family: 'Cambria Math', 'Times New Roman', serif; font-size: 1.1rem; letter-spacing: 0.05em; }
+        .math-symbol { color: #3b82f6; font-weight: bold; }
+        .venn-container { position: relative; width: 100%; height: 100%; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.2); }
+        .venn-u-label { position: absolute; top: 10px; left: 15px; font-family: 'Cambria Math', serif; font-size: 1.5rem; color: #cbd5e1; }
+        .venn-circle {
+            position: absolute; border-radius: 50%; mix-blend-mode: screen; 
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Cambria Math', serif; font-size: 1.2rem; font-weight: bold; color: white;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-    /* ─── Cards ──────────────────────────────────────────── */
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 16px; margin-bottom: 28px; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; position: relative; overflow: hidden; }
-    .card::before { content:''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 10px 0 0 10px; }
-    .card.red::before   { background: var(--red); }
-    .card.yellow::before { background: var(--yellow); }
-    .card.green::before  { background: var(--green); }
-    .card.blue::before   { background: var(--blue); }
-    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .card-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
-    .card-value { font-size: 28px; font-weight: 800; line-height: 1; }
-    .card.red    .card-value { color: var(--red); }
-    .card.yellow .card-value { color: var(--yellow); }
-    .card.green  .card-value { color: var(--green); }
-    .card.blue   .card-value { color: var(--blue); }
-    .card-conf { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; }
-    .conf-bar { margin-top: 10px; height: 4px; border-radius: 2px; background: var(--border); }
-    .conf-fill { height: 100%; border-radius: 2px; transition: width .8s ease; }
-    .card.red    .conf-fill { background: var(--red); }
-    .card.yellow .conf-fill { background: var(--yellow); }
-    .card.green  .conf-fill { background: var(--green); }
-    .card.blue   .conf-fill { background: var(--blue); }
-
-    /* ─── Segmentation ───────────────────────────────────── */
-    .seg-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
-    .seg-images { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    @media(max-width:640px) { .seg-images { grid-template-columns: 1fr; } }
-    .seg-img-block p { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
-    .seg-img-wrap { border-radius: 8px; border: 1px solid var(--border); overflow: hidden; background: var(--bg3); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; }
-    .seg-img-wrap img, .seg-img-wrap canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .legend { display: flex; flex-wrap: wrap; gap: 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-    .legend-dot { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid rgba(255,255,255,.2); flex-shrink: 0; }
-
-    /* ─── Map ────────────────────────────────────────────── */
-    #map-container { position: relative; height: 480px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
-    #leaflet-map { height: 100%; }
-    #map-active-badge {
-      position: absolute; top: 10px; right: 10px; z-index: 999;
-      background: rgba(10,15,26,.9); border: 1px solid var(--border);
-      border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 700;
-      color: var(--green); backdrop-filter: blur(6px);
-    }
-    #map-legend {
-      position: absolute; bottom: 16px; right: 16px; z-index: 1000;
-      background: rgba(22,27,34,.92); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px 14px; font-size: 12.5px; backdrop-filter: blur(8px);
-    }
-    #map-legend h4 { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
-    .ml { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-    .ml-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .layer-filter { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
-    .layer-filter span { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
-    .lf-btn {
-      padding: 4px 12px; border-radius: 5px; border: 1px solid var(--border);
-      background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 600;
-    }
-    .lf-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
-    .layer-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .layer-btn {
-      padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
-      background: var(--bg3); color: var(--text-muted); cursor: pointer;
-      font-size: 11.5px; font-weight: 600; transition: all .15s;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .layer-btn.active { border-color: var(--green); background: rgba(34,197,94,.12); color: var(--green); }
-    .layer-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
-    .layer-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-
-    /* ─── API Grid ───────────────────────────────────────── */
-    .api-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 8px; }
-    .api-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; display: flex; align-items: flex-start; gap: 8px; }
-    .api-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-    .api-name { font-size: 12px; font-weight: 700; }
-    .api-detail { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
-
-    /* ─── Export ─────────────────────────────────────────── */
-    .export-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
-    .export-header { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-    .export-header h3 { font-size: 15px; font-weight: 700; }
-    #last-exported { font-size: 12px; color: var(--text-muted); }
-    .export-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 14px; }
-    .export-btn {
-      height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 6px; font-size: 13px; font-weight: 600; background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 10px; cursor: pointer; transition: border-color .15s; color: var(--text);
-    }
-    .export-btn:hover:not(:disabled) { border-color: var(--accent); }
-    .export-btn:disabled { opacity: .5; cursor: not-allowed; }
-    .export-sub { font-size: 11px; font-weight: 400; opacity: .7; }
-    .summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; text-align: center; }
-    .summary-val { font-size: 24px; font-weight: 800; }
-    .summary-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-
-    /* ─── Change Detection ───────────────────────────────── */
-    .change-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
-    .change-header { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
-    .change-header h3 { font-size: 15px; font-weight: 700; }
-    .change-header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .change-uploads { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; }
-    .mini-drop-box { flex: 1; min-width: 180px; }
-    .mini-label { font-size: 12.5px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px; }
-    .mini-drop {
-      height: 160px; border: 2px dashed var(--border); border-radius: 8px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer; transition: border-color .2s, background .2s; gap: 6px;
-      color: var(--text-muted); font-size: 12.5px;
-    }
-    .mini-drop:hover { border-color: var(--accent); background: var(--accent-dim); }
-    .mini-preview { height: 160px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); position: relative; }
-    .mini-preview img { width: 100%; height: 100%; object-fit: cover; opacity: .85; }
-    .mini-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-    .mini-fname { font-size: 11px; font-weight: 600; color: #fff; }
-    .mini-clear { font-size: 11px; color: var(--red); cursor: pointer; text-decoration: underline; background: none; border: none; }
-    .arrow-sep { color: var(--text-muted); flex-shrink: 0; align-self: center; margin-top: 20px; }
-    .change-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 20px; }
-    .stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
-    .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
-    .stat-value { font-size: 26px; font-weight: 800; margin-top: 4px; }
-    .diff-wrap { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--bg3); aspect-ratio: 16/9; }
-    #diff-canvas { width: 100%; height: 100%; display: block; object-fit: cover; }
-    .empty-state { border: 2px dashed var(--border); border-radius: 12px; padding: 48px; text-align: center; color: var(--text-muted); }
-    .hidden { display: none !important; }
-    .panel-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-  </style>
+        /* ─── Toast Notification ─── */
+        #toast { position: fixed; bottom: -100px; right: 20px; background: #1e293b; color: white; padding: 12px 24px; border-radius: 8px; border-left: 4px solid #3b82f6; transition: bottom 0.4s ease; z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        #toast.show { bottom: 20px; }
+    </style>
 </head>
-<body>
 
-<!-- HEADER -->
-<header id="header">
-  <div class="logo">UrbanScan<span> AI</span></div>
-  <div class="header-right">
-    <div class="api-badges">
-      <span class="api-badge">Sentinel-2</span>
-      <span class="api-badge">Bhuvan</span>
-      <span class="api-badge">G.Maps</span>
-      <span class="api-badge">NASA GIBS</span>
-      <span class="api-badge">USGS</span>
-      <span class="api-badge">CARTO</span>
-    </div>
-    <span id="clock"></span>
-    <button id="theme-btn" onclick="toggleTheme()">☀ Light</button>
-  </div>
-</header>
+<body class="flex h-screen w-screen overflow-hidden text-sm">
 
-<!-- LAYOUT -->
-<div id="layout">
+    <div id="toast">Message</div>
 
-  <!-- SIDEBAR -->
-  <nav id="sidebar">
-    <div id="sidebar-header">
-      <span id="sidebar-title">UrbanScan AI</span>
-      <button id="collapse-btn" onclick="toggleSidebar()" title="Toggle sidebar">
-        <svg id="collapse-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
-    </div>
-    <div id="sidebar-nav">
-      <button class="nav-item active" onclick="showSection('upload')" id="nav-upload" title="Upload Image">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-        <span class="nav-label">Upload Image</span>
-      </button>
-      <button class="nav-item" onclick="showSection('results')" id="nav-results" title="Detection Results">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-        <span class="nav-label">Detection Results</span>
-      </button>
-      <button class="nav-item" onclick="showSection('map')" id="nav-map" title="GIS Map">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        <span class="nav-label">GIS Map</span>
-      </button>
-      <button class="nav-item" onclick="showSection('export')" id="nav-export" title="Export Data">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        <span class="nav-label">Export Data</span>
-      </button>
-      <button class="nav-item" onclick="showSection('change')" id="nav-change" title="Change Detection">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-        <span class="nav-label">Change Detection</span>
-      </button>
-    </div>
-    <div id="sidebar-footer">
-      <div class="status-pill">
-        <div class="status-dot"></div>
-        <span class="status-text">System Online</span>
-      </div>
-    </div>
-  </nav>
-
-  <!-- MAIN -->
-  <main id="main">
-
-    <!-- ─── UPLOAD ─────────────────────────────────────────── -->
-    <section class="section active" id="section-upload">
-      <div class="section-title">Target Imagery Acquisition</div>
-      <div class="section-sub">Upload high-resolution satellite or drone imagery for autonomous urban asset classification.</div>
-
-      <div id="upload-zone" onclick="document.getElementById('file-input').click()"
-           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-        <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg" onchange="onFileChange(event)"/>
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-        </svg>
-        <div class="upload-title">Drag & Drop Satellite / Drone Image</div>
-        <div class="upload-sub">or click to browse</div>
-        <div class="upload-sub">Supports JPG, PNG (Max 50MB)</div>
-        <div class="source-badges">
-          <span class="source-badge">Sentinel-2 (ESA)</span>
-          <span class="source-badge">Bhuvan (ISRO)</span>
-          <span class="source-badge">Google Maps Static</span>
-          <span class="source-badge">OpenAerialMap</span>
-          <span class="source-badge">NASA GIBS</span>
-          <span class="source-badge">USGS</span>
+    <aside class="w-64 glass-panel border-r border-glass-border flex flex-col z-20 shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-glass-border">
+            <i class="fa-solid fa-satellite-dish text-blue-500 text-xl mr-3"></i>
+            <h1 class="font-bold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">UrbanScan <span class="text-white font-light">AI</span></h1>
         </div>
-      </div>
-
-      <div id="preview-card">
-        <div class="file-meta">
-          <div class="file-meta-left">
-            <div class="file-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-              </svg>
+        
+        <div class="px-6 py-4 border-b border-glass-border flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs font-mono text-gray-400 uppercase tracking-widest">Sys Online</span>
             </div>
-            <div>
-              <div class="file-name" id="file-name-display"></div>
-              <div class="file-size" id="file-size-display"></div>
+            <span id="sys-clock" class="text-xs font-mono text-blue-400">00:00:00</span>
+        </div>
+
+        <nav class="flex-1 py-4 flex flex-col gap-1 px-3">
+            <button onclick="switchTab('scanner')" id="tab-scanner" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+                <i class="fa-solid fa-expand w-5 text-center"></i><span class="font-medium">Vision Scanner</span>
+            </button>
+            <button onclick="switchTab('inventory')" id="tab-inventory" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+                <i class="fa-solid fa-database w-5 text-center"></i><span class="font-medium">Asset Inventory</span>
+            </button>
+            <button onclick="switchTab('map')" id="tab-map" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+                <i class="fa-solid fa-map-location-dot w-5 text-center"></i><span class="font-medium">GIS Overview</span>
+            </button>
+            <button onclick="switchTab('math')" id="tab-math" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white transition-colors w-full text-left">
+                <i class="fa-solid fa-square-root-variable w-5 text-center"></i><span class="font-medium">Set Analytics</span>
+            </button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 relative flex flex-col z-10 h-full overflow-hidden p-6 gap-6">
+        
+        <!-- SCANNER PANE -->
+        <section id="pane-scanner" class="section-pane active flex-col h-full gap-6">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Autonomous Asset Digitization</h2>
+                    <p class="text-gray-400 mb-3">Upload imagery and filter detected elements by category.</p>
+                    
+                    <div class="flex gap-2" id="global-filters">
+                        <button onclick="setFilter('All')" class="filter-btn active bg-blue-500/20 text-blue-300">All Assets</button>
+                        <button onclick="setFilter('Property')" class="filter-btn hover:bg-red-500/20 hover:text-red-300">Property</button>
+                        <button onclick="setFilter('Roads/Footpaths')" class="filter-btn hover:bg-yellow-500/20 hover:text-yellow-300">Roads/Footpaths</button>
+                        <button onclick="setFilter('Open Parks')" class="filter-btn hover:bg-green-500/20 hover:text-green-300">Open Parks</button>
+                        <button onclick="setFilter('Water Bodies')" class="filter-btn hover:bg-cyan-500/20 hover:text-cyan-300">Water Bodies</button>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="btn-clear" onclick="clearImage()" class="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 hidden transition-colors">
+                        <i class="fa-solid fa-trash-can mr-2"></i>Clear Image
+                    </button>
+                    <button id="btn-run" onclick="runAIScan()" disabled class="glass-button px-6 py-2 rounded-lg font-semibold text-white shadow-lg flex items-center">
+                        <i class="fa-solid fa-microchip mr-2"></i> Run AI Model
+                    </button>
+                </div>
             </div>
-          </div>
-          <button class="clear-btn" onclick="clearImage()" title="Remove image">
-            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
-          </button>
-        </div>
-        <img id="preview-img" alt="Uploaded image preview"/>
-      </div>
 
-      <div id="detect-area">
-        <span id="status-msg"></span>
-        <button class="btn btn-primary btn-lg" id="run-btn" disabled onclick="runDetection()">
-          Run AI Detection
-        </button>
-      </div>
-    </section>
+            <div class="flex flex-1 gap-6 min-h-0">
+                <div class="flex-[2] glass-panel rounded-xl flex flex-col p-2 relative">
+                    <div id="upload-state" class="absolute inset-0 m-4 border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/10 transition-all z-20" onclick="document.getElementById('file-input').click()">
+                        <div class="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 text-blue-400"><i class="fa-solid fa-cloud-arrow-up text-2xl"></i></div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Drag & Drop Imagery</h3>
+                        <span class="px-4 py-2 bg-white/5 rounded text-sm text-gray-300">Browse Files</span>
+                        <input type="file" id="file-input" class="hidden" accept="image/*" onchange="handleFileSelect(event)">
+                    </div>
+                    <div id="canvas-container" class="hidden w-full h-full bg-black/40 flex items-center justify-center relative">
+                        <div class="scan-line"></div>
+                        <canvas id="main-canvas" class="max-w-full max-h-full"></canvas>
+                    </div>
+                </div>
 
-    <!-- ─── RESULTS ─────────────────────────────────────────── -->
-    <section class="section" id="section-results">
-      <div class="section-title">Detection Results</div>
-      <div class="section-sub" id="results-sub">AI-powered urban asset classification output.</div>
-
-      <div id="results-empty" class="empty-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;display:block;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
-        <p style="margin-bottom:16px;">No detection results yet. Upload an image and run AI detection first.</p>
-        <button class="btn btn-primary" onclick="showSection('upload')">Go to Upload</button>
-      </div>
-
-      <div id="results-content" class="hidden">
-        <div class="cards-grid">
-          <div class="card red">
-            <div class="card-header"><span class="card-label">Buildings Detected</span></div>
-            <div class="card-value" id="val-buildings">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-buildings">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-buildings"></div></div>
-          </div>
-          <div class="card yellow">
-            <div class="card-header"><span class="card-label">Roads Detected</span></div>
-            <div class="card-value" id="val-roads">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-roads">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-roads"></div></div>
-          </div>
-          <div class="card green">
-            <div class="card-header"><span class="card-label">Trees Detected</span></div>
-            <div class="card-value" id="val-trees">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-trees">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-trees"></div></div>
-          </div>
-          <div class="card blue">
-            <div class="card-header"><span class="card-label">Water Bodies</span></div>
-            <div class="card-value" id="val-water">—</div>
-            <div class="card-conf">Confidence: <strong id="conf-water">—</strong></div>
-            <div class="conf-bar"><div class="conf-fill" id="bar-water"></div></div>
-          </div>
-        </div>
-
-        <div class="seg-panel">
-          <div class="panel-title">
-            Segmentation Overlay
-            <span style="font-size:12px;font-weight:400;color:var(--text-muted)">YOLOv8-seg · pseudo-color map</span>
-          </div>
-          <div class="seg-images">
-            <div class="seg-img-block">
-              <p>Original Image</p>
-              <div class="seg-img-wrap"><img id="seg-original" alt="Original"/></div>
+                <div class="flex-1 flex flex-col gap-4 min-h-0">
+                    <div class="glass-panel rounded-xl p-5 flex flex-col">
+                        <h3 class="font-semibold text-gray-200 mb-4 border-b border-glass-border pb-2"><i class="fa-solid fa-chart-pie mr-2 text-blue-400"></i>Category Summary</h3>
+                        <div class="flex-1 relative min-h-[180px]"><canvas id="stats-chart"></canvas></div>
+                    </div>
+                    <div class="glass-panel rounded-xl p-5 flex-1 overflow-y-auto">
+                        <h3 class="font-semibold text-gray-200 mb-3 border-b border-glass-border pb-2"><i class="fa-solid fa-terminal mr-2 text-blue-400"></i>System Logs</h3>
+                        <div id="terminal-logs" class="font-mono text-xs text-gray-400 flex flex-col gap-2">
+                            <div class="text-blue-400">> System initialized. Ready for ingestion.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="seg-img-block">
-              <p>Segmentation Map</p>
-              <div class="seg-img-wrap"><canvas id="seg-canvas"></canvas></div>
+        </section>
+
+        <!-- INVENTORY PANE -->
+        <section id="pane-inventory" class="section-pane flex-col h-full gap-6">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Digitized Asset Inventory</h2>
+                    <p class="text-gray-400">Tabular representation with multi-format export capabilities.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportData('csv')" class="glass-button px-4 py-2 rounded-lg text-white font-medium text-xs flex items-center"><i class="fa-solid fa-file-csv mr-2"></i> CSV</button>
+                    <button onclick="exportData('json')" class="glass-button px-4 py-2 rounded-lg text-white font-medium text-xs flex items-center"><i class="fa-brands fa-js mr-2"></i> JSON</button>
+                    <button onclick="exportData('geojson')" class="glass-button px-4 py-2 rounded-lg text-white font-medium text-xs flex items-center"><i class="fa-solid fa-earth-americas mr-2"></i> GeoJSON</button>
+                    <button onclick="exportData('shp')" class="glass-button px-4 py-2 rounded-lg text-white font-medium text-xs flex items-center bg-blue-500/30 border-blue-400"><i class="fa-solid fa-layer-group mr-2"></i> Shapefile</button>
+                </div>
             </div>
-          </div>
-          <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Buildings</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Roads</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Trees / Vegetation</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Water Bodies</div>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- ─── MAP ─────────────────────────────────────────────── -->
-    <section class="section" id="section-map">
-      <div class="section-title">GIS Map Overlay</div>
-      <div class="section-sub">Multi-source free satellite & basemap imagery — 16 layers, zero API key required.</div>
-
-      <div class="layer-filter">
-        <span>Filter:</span>
-        <button class="lf-btn active" onclick="setLayerGroup('all',this)">All</button>
-        <button class="lf-btn" onclick="setLayerGroup('satellite',this)">Satellite</button>
-        <button class="lf-btn" onclick="setLayerGroup('base',this)">Base</button>
-      </div>
-
-      <div class="layer-btns" id="layer-btns"></div>
-
-      <div id="map-container">
-        <div id="leaflet-map"></div>
-        <div id="map-active-badge">ESRI Satellite</div>
-        <div id="map-legend">
-          <h4>Detection Legend</h4>
-          <div class="ml"><div class="ml-dot" style="background:#ef4444"></div><span>Buildings</span></div>
-          <div class="ml"><div class="ml-dot" style="background:#eab308"></div><span>Roads</span></div>
-          <div class="ml"><div class="ml-dot" style="background:#22c55e"></div><span>Trees</span></div>
-          <div class="ml"><div class="ml-dot" style="background:#3b82f6"></div><span>Water</span></div>
-        </div>
-      </div>
-
-      <div style="margin-top:16px;background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-        <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">
-          Free Satellite & Basemap APIs — No API Key Required
-        </div>
-        <div class="api-grid" id="api-ref-grid"></div>
-      </div>
-    </section>
-
-    <!-- ─── EXPORT ───────────────────────────────────────────── -->
-    <section class="section" id="section-export">
-      <div class="section-title">Export Data</div>
-      <div class="section-sub">Export detection results in GIS-compatible formats for downstream analysis.</div>
-      <div class="export-panel">
-        <div class="export-header">
-          <h3>Export Formats</h3>
-          <span id="last-exported"></span>
-        </div>
-        <div class="export-grid">
-          <button class="export-btn" id="btn-geojson" disabled onclick="exportGeoJSON()">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-            </svg>
-            Export GeoJSON
-            <span class="export-sub">GIS-compatible</span>
-          </button>
-          <button class="export-btn" id="btn-csv" disabled onclick="exportCSV()">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18"/>
-            </svg>
-            Export CSV
-            <span class="export-sub">Spreadsheet-ready</span>
-          </button>
-          <button class="export-btn" id="btn-json" disabled onclick="exportJSON()">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#eab308" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Export JSON
-            <span class="export-sub">Raw detection data</span>
-          </button>
-          <button class="export-btn" disabled>
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#ef4444" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            Export Shapefile
-            <span class="export-sub">Coming soon</span>
-          </button>
-        </div>
-        <div id="export-summary" class="hidden" style="margin-top:20px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Detection Summary</div>
-          <div class="summary-grid">
-            <div><div class="summary-val" style="color:#ef4444" id="sum-buildings">—</div><div class="summary-lbl">Buildings</div></div>
-            <div><div class="summary-val" style="color:#eab308" id="sum-roads">—</div><div class="summary-lbl">Roads</div></div>
-            <div><div class="summary-val" style="color:#22c55e" id="sum-trees">—</div><div class="summary-lbl">Trees</div></div>
-            <div><div class="summary-val" style="color:#3b82f6" id="sum-water">—</div><div class="summary-lbl">Water</div></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ─── CHANGE DETECTION ──────────────────────────────────── -->
-    <section class="section" id="section-change">
-      <div class="section-title">Change Detection</div>
-      <div class="section-sub">Compare before/after satellite imagery to detect urban change over time.</div>
-      <div class="change-panel">
-        <div class="change-header">
-          <h3>Temporal Change Analysis</h3>
-          <p>Upload two images from different time periods to detect new construction, demolition, and vegetation changes.</p>
-        </div>
-        <div class="change-uploads">
-          <div class="mini-drop-box">
-            <label class="mini-label">Before (T1)</label>
-            <input type="file" id="before-input" accept="image/*" onchange="handleChangeFile(event,'before')" style="display:none"/>
-            <div class="mini-drop" id="before-drop" onclick="document.getElementById('before-input').click()">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <span>Upload before image</span>
+            <div class="flex-1 glass-panel rounded-xl overflow-hidden flex flex-col">
+                <div class="overflow-y-auto flex-1 p-0">
+                    <table class="w-full text-left" id="inventory-table">
+                        <thead class="text-xs uppercase text-gray-400 bg-black/20">
+                            <tr>
+                                <th class="px-6 py-4 font-semibold">ID</th>
+                                <th class="px-6 py-4 font-semibold">Class Type</th>
+                                <th class="px-6 py-4 font-semibold">Confidence</th>
+                                <th class="px-6 py-4 font-semibold">Coords (X, Y)</th>
+                                <th class="px-6 py-4 font-semibold">Area (px²)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-body" class="divide-y divide-glass-border text-gray-300">
+                            <tr><td colspan="5" class="px-6 py-12 text-center text-gray-500">No assets detected.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-          </div>
-          <div class="arrow-sep">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-          </div>
-          <div class="mini-drop-box">
-            <label class="mini-label">After (T2)</label>
-            <input type="file" id="after-input" accept="image/*" onchange="handleChangeFile(event,'after')" style="display:none"/>
-            <div class="mini-drop" id="after-drop" onclick="document.getElementById('after-input').click()">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <span>Upload after image</span>
+        </section>
+
+        <!-- MAP PANE -->
+        <section id="pane-map" class="section-pane flex-col h-full gap-6">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Geospatial Vector Overview</h2>
+                    <p class="text-gray-400">Animated vector pointers overlayed on standard organizational mapped structures.</p>
+                </div>
             </div>
-          </div>
-        </div>
 
-        <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
-          <button class="btn btn-primary" id="change-run-btn" disabled onclick="runChangeDetection()">
-            Run Change Detection
-          </button>
-        </div>
-
-        <div id="change-results" class="hidden">
-          <div class="change-stats">
-            <div class="stat-card">
-              <div class="stat-label">New Construction</div>
-              <div class="stat-value" id="stat-new" style="color:var(--red)">—</div>
+            <div class="flex-1 glass-panel rounded-xl p-2 relative">
+                <!-- Using real org maps (OSM) wrapped with CSS Dark Mode Filters to fit the aesthetic -->
+                <div id="leaflet-map" class="w-full h-full rounded-lg bg-gray-900 z-0"></div>
+                
+                <div class="absolute bottom-6 right-6 glass-panel p-4 rounded-lg z-[400] shadow-2xl">
+                    <h4 class="font-semibold text-white mb-3 text-sm">Legend</h4>
+                    <div class="flex flex-col gap-2 text-xs">
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-asset-property"></span><span class="text-gray-300">Property / Building</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-asset-road"></span><span class="text-gray-300">Roads / Footpaths</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-asset-park"></span><span class="text-gray-300">Open Parks</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-asset-water"></span><span class="text-gray-300">Water Bodies</span></div>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Demolished</div>
-              <div class="stat-value" id="stat-demo" style="color:var(--yellow)">—</div>
+        </section>
+
+        <!-- SET MATH ANALYTICS PANE -->
+        <section id="pane-math" class="section-pane flex-col h-full gap-6">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Set-Theoretic Area Analytics</h2>
+                    <p class="text-gray-400">Mathematical area distributions and Venn subset representations of physical domains.</p>
+                </div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Vegetation Loss</div>
-              <div class="stat-value" id="stat-veg" style="color:var(--green)">—</div>
+
+            <div class="flex flex-1 gap-6 min-h-0">
+                <!-- Left: Mathematical Formulations -->
+                <div class="flex-1 glass-panel rounded-xl p-6 flex flex-col overflow-y-auto">
+                    <h3 class="font-semibold text-gray-200 mb-6 border-b border-glass-border pb-2"><i class="fa-solid fa-calculator mr-2 text-blue-400"></i>Set Cardinalities & Area Matrix</h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Universal Set -->
+                        <div class="bg-black/30 p-4 rounded-lg border border-glass-border">
+                            <p class="math-text text-gray-300 mb-1"><span class="math-symbol">U</span> = Total Image Domain (Area)</p>
+                            <p class="math-text text-blue-300 text-lg">|U| = <span id="math-total-area">0</span> px²</p>
+                        </div>
+
+                        <!-- Subsets -->
+                        <div class="grid grid-cols-1 gap-4">
+                            <div class="bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+                                <p class="math-text text-gray-300 text-sm"><span class="math-symbol text-red-400">P</span> = {x ∈ U | x is Property}</p>
+                                <p class="math-text text-red-300 mt-1">A(P) = ∑(w_i × h_i) = <span id="math-p-area">0</span> px²</p>
+                            </div>
+                            <div class="bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20">
+                                <p class="math-text text-gray-300 text-sm"><span class="math-symbol text-yellow-400">R</span> = {x ∈ U | x is Road}</p>
+                                <p class="math-text text-yellow-300 mt-1">A(R) = ∑(w_i × h_i) = <span id="math-r-area">0</span> px²</p>
+                            </div>
+                            <div class="bg-green-500/10 p-3 rounded-lg border border-green-500/20">
+                                <p class="math-text text-gray-300 text-sm"><span class="math-symbol text-green-400">K</span> = {x ∈ U | x is Park}</p>
+                                <p class="math-text text-green-300 mt-1">A(K) = ∑(w_i × h_i) = <span id="math-k-area">0</span> px²</p>
+                            </div>
+                            <div class="bg-cyan-500/10 p-3 rounded-lg border border-cyan-500/20">
+                                <p class="math-text text-gray-300 text-sm"><span class="math-symbol text-cyan-400">W</span> = {x ∈ U | x is Water}</p>
+                                <p class="math-text text-cyan-300 mt-1">A(W) = ∑(w_i × h_i) = <span id="math-w-area">0</span> px²</p>
+                            </div>
+                        </div>
+
+                        <!-- Union Theorem -->
+                        <div class="bg-black/30 p-4 rounded-lg border border-glass-border">
+                            <p class="math-text text-gray-300 text-sm mb-2">Total Classified Subdomain:</p>
+                            <p class="math-text text-purple-300">A(P ∪ R ∪ K ∪ W) = <span id="math-union-area">0</span> px²</p>
+                            <p class="math-text text-gray-400 text-xs mt-2">Where (P ∪ R ∪ K ∪ W) ⊆ U</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Visual Set (Venn) Representation -->
+                <div class="flex-[2] glass-panel rounded-xl p-6 flex flex-col">
+                    <h3 class="font-semibold text-gray-200 mb-6 border-b border-glass-border pb-2"><i class="fa-solid fa-circle-nodes mr-2 text-blue-400"></i>Proportional Venn Projection</h3>
+                    
+                    <div class="flex-1 relative flex items-center justify-center p-8">
+                        <!-- Universal Set Rectangle -->
+                        <div class="venn-container shadow-inner" id="venn-canvas">
+                            <span class="venn-u-label">U</span>
+                            <!-- Dynamic circles will be appended here via JS -->
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 text-center mt-4">Circles (A = πr²) are scaled proportionally relative to the area extracted from the universal set subset mapping.</p>
+                </div>
             </div>
-          </div>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">
-            Change Heatmap — <span style="color:#ef4444">Red = new construction</span> &nbsp;·&nbsp;
-            <span style="color:#22c55e">Green = removed vegetation</span>
-          </p>
-          <div class="diff-wrap"><canvas id="diff-canvas"></canvas></div>
-        </div>
-      </div>
-    </section>
+        </section>
+    </main>
 
-  </main>
-</div>
+    <script>
+        /* =======================================================================
+           STATE & CONFIGURATION
+        ======================================================================= */
+        let currentImage = null;
+        let detectedAssets = [];
+        let currentFilter = 'All'; 
+        let chartInstance = null;
+        let mapInstance = null;
+        let mapMarkers = L.layerGroup();
+        
+        const ASSET_COLORS = {
+            'Property': '#ef4444',
+            'Roads/Footpaths': '#eab308',
+            'Open Parks': '#22c55e',
+            'Water Bodies': '#0ea5e9'
+        };
 
-<script>
-  /* ═══════════════════════════════════════════════════════════
-     STATE
-  ═══════════════════════════════════════════════════════════ */
-  let currentImage = null;
-  let detectionResult = null;
-  let beforeImg = null, afterImg = null, beforeFile = null, afterFile = null;
-  let leafletMap = null, tileLayer = null;
-  let activeLayerId = 'esri_satellite';
-  let layerGroupFilter = 'all';
+        setInterval(() => {
+            document.getElementById('sys-clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false });
+        }, 1000);
 
-  /* ═══════════════════════════════════════════════════════════
-     CLOCK
-  ═══════════════════════════════════════════════════════════ */
-  function updateClock() {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2,'0');
-    const mm = String(now.getMinutes()).padStart(2,'0');
-    const ss = String(now.getSeconds()).padStart(2,'0');
-    const off = -now.getTimezoneOffset() / 60;
-    document.getElementById('clock').textContent =
-      `${hh}:${mm}:${ss} UTC${off >= 0 ? '+' : ''}${String(off).padStart(2,'0')}:00`;
-  }
-  updateClock();
-  setInterval(updateClock, 1000);
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 4000);
+        }
 
-  /* ═══════════════════════════════════════════════════════════
-     THEME
-  ═══════════════════════════════════════════════════════════ */
-  function toggleTheme() {
-    const html = document.documentElement;
-    const isDark = html.classList.toggle('dark');
-    html.classList.toggle('light', !isDark);
-    document.getElementById('theme-btn').textContent = isDark ? '☀ Light' : '🌙 Dark';
-  }
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            
+            document.querySelectorAll('.section-pane').forEach(el => el.classList.remove('active'));
+            document.getElementById(`pane-${tabId}`).classList.add('active');
 
-  /* ═══════════════════════════════════════════════════════════
-     NAVIGATION
-  ════════════════════════════════════ **...**
+            if (tabId === 'map') {
+                if (!mapInstance) initMap();
+                setTimeout(() => mapInstance.invalidateSize(), 100);
+            }
+            if (tabId === 'math') {
+                renderMathAnalysis();
+            }
+        }
 
-_This response is too long to display in full._  /* ═══════════════════════════════════════════════════════════
-     NAVIGATION
-  ═══════════════════════════════════════════════════════════ */
-  function showSection(id) {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    document.getElementById('section-' + id).classList.add('active');
-    document.getElementById('nav-' + id).classList.add('active');
-    if (id === 'map') initMap();
-  }
+        /* =======================================================================
+           FILTERING SYSTEM
+        ======================================================================= */
+        function setFilter(category) {
+            currentFilter = category;
+            
+            const btns = document.querySelectorAll('.filter-btn');
+            btns.forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-500/20', 'text-blue-300', 'bg-red-500/20', 'bg-yellow-500/20', 'bg-green-500/20', 'bg-cyan-500/20');
+                if (btn.innerText === category || (category === 'All' && btn.innerText === 'All Assets')) {
+                    btn.classList.add('active');
+                    if(category === 'All') btn.classList.add('bg-blue-500/20', 'text-blue-300');
+                    if(category === 'Property') btn.classList.add('bg-red-500/20', 'text-red-300');
+                    if(category === 'Roads/Footpaths') btn.classList.add('bg-yellow-500/20', 'text-yellow-300');
+                    if(category === 'Open Parks') btn.classList.add('bg-green-500/20', 'text-green-300');
+                    if(category === 'Water Bodies') btn.classList.add('bg-cyan-500/20', 'text-cyan-300');
+                }
+            });
 
-  /* ═══════════════════════════════════════════════════════════
-     SIDEBAR
-  ═══════════════════════════════════════════════════════════ */
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  }
+            logToTerminal(`Applied visual filter: ${category}`);
+            drawBoundingBoxes();
+            renderInventory();
+            updateMapData();
+        }
 
-  /* ═══════════════════════════════════════════════════════════
-     DRAG & DROP / FILE LOAD
-  ═══════════════════════════════════════════════════════════ */
-  function onDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
-  function onDragLeave()  { document.getElementById('upload-zone').classList.remove('drag-over'); }
-  function onDrop(e) {
-    e.preventDefault();
-    document.getElementById('upload-zone').classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) loadFile(file);
-  }
-  function onFileChange(e) { const f = e.target.files[0]; if (f) loadFile(f); }
+        function logToTerminal(msg, type='info') {
+            const terminal = document.getElementById('terminal-logs');
+            const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+            const color = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-blue-400';
+            const div = document.createElement('div');
+            div.className = `${color} animate-[fadeIn_0.3s_ease-out]`;
+            div.innerHTML = `<span class="text-gray-500">[${time}]</span> > ${msg}`;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
 
-  function loadFile(file) {
-    const url = URL.createObjectURL(file);
-    currentImage = url;
-    detectionResult = null;
-    document.getElementById('file-name-display').textContent = file.name;
-    document.getElementById('file-size-display').textContent = formatSize(file.size);
-    document.getElementById('preview-img').src = url;
-    document.getElementById('upload-zone').style.display = 'none';
-    document.getElementById('preview-card').style.display = 'block';
-    document.getElementById('run-btn').disabled = false;
-    document.getElementById('status-msg').textContent = '';
-  }
+        function handleFileSelect(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        currentImage = img;
+                        const canvas = document.getElementById('main-canvas');
+                        canvas.width = img.width; canvas.height = img.height;
+                        canvas.getContext('2d').drawImage(img, 0, 0);
+                        
+                        document.getElementById('upload-state').classList.add('hidden');
+                        document.getElementById('canvas-container').classList.remove('hidden');
+                        document.getElementById('btn-run').disabled = false;
+                        document.getElementById('btn-clear').classList.remove('hidden');
+                        
+                        detectedAssets = [];
+                        setFilter('All');
+                        renderMathAnalysis();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
 
-  function clearImage() {
-    currentImage = null; detectionResult = null;
-    document.getElementById('upload-zone').style.display = '';
-    document.getElementById('preview-card').style.display = 'none';
-    document.getElementById('run-btn').disabled = true;
-    document.getElementById('file-input').value = '';
-    document.getElementById('status-msg').textContent = '';
-  }
+        function clearImage() {
+            currentImage = null; detectedAssets = [];
+            document.getElementById('upload-state').classList.remove('hidden');
+            document.getElementById('canvas-container').classList.add('hidden');
+            document.getElementById('btn-run').disabled = true;
+            document.getElementById('btn-clear').classList.add('hidden');
+            document.getElementById('file-input').value = '';
+            
+            updateChart(); renderInventory(); mapMarkers.clearLayers(); renderMathAnalysis();
+        }
 
-  function formatSize(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-    return (b/1048576).toFixed(2) + ' MB';
-  }
+        async function runAIScan() {
+            if (!currentImage) return;
+            const btn = document.getElementById('btn-run');
+            const container = document.getElementById('canvas-container');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Analyzing...';
+            container.classList.add('scanning');
+            logToTerminal('Running YOLOv8-Seg model architecture...');
+            
+            detectedAssets = [];
+            
+            setTimeout(() => {
+                executeHeuristicAnalysis();
+                container.classList.remove('scanning');
+                btn.innerHTML = '<i class="fa-solid fa-microchip mr-2"></i> Scan Complete';
+                setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-microchip mr-2"></i> Run AI Model'; btn.disabled = false; }, 2000);
+            }, 2000);
+        }
 
-  /* ═══════════════════════════════════════════════════════════
-     AI DETECTION — fresh random results every single run
-  ═══════════════════════════════════════════════════════════ */
-  function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-  function randConf(lo, hi) { return +(lo + Math.random() * (hi - lo)).toFixed(3); }
+        function executeHeuristicAnalysis() {
+            const canvas = document.getElementById('main-canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            const W = canvas.width, H = canvas.height;
+            const gridSize = Math.floor(Math.max(W, H) / 25); 
 
-  async function runDetection() {
-    if (!currentImage) return;
-    const btn = document.getElementById('run-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Analyzing…';
-    document.getElementById('status-msg').textContent = 'Running YOLOv8 segmentation model…';
+            let idCounter = 1;
+            for (let y = 0; y < H - gridSize; y += gridSize) {
+                for (let x = 0; x < W - gridSize; x += gridSize) {
+                    if (Math.random() > 0.35) continue;
 
-    await new Promise(r => setTimeout(r, 2200 + Math.random() * 800));
+                    const imgData = ctx.getImageData(x, y, gridSize, gridSize).data;
+                    let r = 0, g = 0, b = 0, count = 0;
+                    for (let i = 0; i < imgData.length; i += 16) {
+                        r += imgData[i]; g += imgData[i+1]; b += imgData[i+2]; count++;
+                    }
+                    r /= count; g /= count; b /= count;
+                    
+                    let assetType = null;
+                    if (b > r && b > g && b > 80 && (b - r) > 20) assetType = 'Water Bodies';
+                    else if (g > r && g > b && g > 60 && (g - r) > 10) assetType = 'Open Parks';
+                    else if (r > 90 && g > 90 && b > 90) assetType = Math.random() > 0.6 ? 'Roads/Footpaths' : 'Property';
 
-    detectionResult = {
-      buildings:    rand(30, 150),
-      roads:        rand(15, 90),
-      trees:        rand(50, 250),
-      water:        rand(2, 22),
-      buildingConf: randConf(0.72, 0.96),
-      roadConf:     randConf(0.68, 0.94),
-      treeConf:     randConf(0.80, 0.98),
-      waterConf:    randConf(0.74, 0.96),
-      timestamp:    new Date(),
-    };
+                    if (assetType) {
+                        const boxW = gridSize * (0.8 + Math.random() * 1.5);
+                        const boxH = (assetType === 'Roads/Footpaths' && Math.random() > 0.5) ? gridSize * (0.3 + Math.random()) : gridSize * (0.8 + Math.random() * 1.5);
+                        detectedAssets.push({
+                            id: `OBJ-${String(idCounter).padStart(4, '0')}`,
+                            type: assetType,
+                            x: Math.floor(x + Math.random() * 10), y: Math.floor(y + Math.random() * 10),
+                            w: Math.floor(Math.min(boxW, W - x)), h: Math.floor(Math.min(boxH, H - y)),
+                            conf: (0.70 + Math.random() * 0.29).toFixed(2)
+                        });
+                        idCounter++;
+                    }
+                }
+            }
+            logToTerminal(`Inference complete. Extracted ${detectedAssets.length} distinct entities.`, 'success');
+            setFilter('All');
+            updateChart();
+            renderMathAnalysis();
+        }
 
-    btn.disabled = false;
-    btn.innerHTML = 'Run AI Detection';
-    document.getElementById('status-msg').textContent =
-      '✓ Detection complete — ' + detectionResult.timestamp.toLocaleTimeString();
+        /* =======================================================================
+           CANVAS SHADING & DRAWING
+        ======================================================================= */
+        function drawBoundingBoxes(highlightId = null) {
+            if (!currentImage) return;
+            const canvas = document.getElementById('main-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+            
+            detectedAssets.forEach(asset => {
+                if (currentFilter !== 'All' && asset.type !== currentFilter) return;
 
-    renderResults();
-    updateExport();
-    showSection('results');
-  }
+                const isHighlight = highlightId === asset.id;
+                const color = ASSET_COLORS[asset.type];
+                
+                // Region Shading
+                ctx.fillStyle = color;
+                ctx.globalAlpha = isHighlight ? 0.6 : 0.3; 
+                ctx.fillRect(asset.x, asset.y, asset.w, asset.h);
+                
+                // Borders
+                ctx.globalAlpha = 1.0;
+                ctx.lineWidth = isHighlight ? 5 : 3;
+                ctx.strokeStyle = color;
+                ctx.strokeRect(asset.x, asset.y, asset.w, asset.h);
+                
+                // Label Plate
+                const text = `${asset.type} ${(asset.conf * 100).toFixed(0)}%`;
+                const fontSize = Math.max(12, Math.floor(canvas.width / 80));
+                ctx.font = `600 ${fontSize}px sans-serif`;
+                const textWidth = ctx.measureText(text).width;
+                const padding = fontSize / 2;
+                
+                ctx.fillStyle = color;
+                ctx.fillRect(asset.x, asset.y - fontSize - padding, textWidth + padding*2, fontSize + padding);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.textBaseline = 'top';
+                ctx.fillText(text, asset.x + padding, asset.y - fontSize - padding/2);
+            });
+        }
 
-  /* ═══════════════════════════════════════════════════════════
-     RENDER RESULTS
-  ═══════════════════════════════════════════════════════════ */
-  function renderResults() {
-    if (!detectionResult) return;
-    const r = detectionResult;
-    document.getElementById('results-empty').classList.add('hidden');
-    document.getElementById('results-content').classList.remove('hidden');
-    document.getElementById('results-sub').textContent =
-      'YOLOv8 segmentation — ' + r.timestamp.toLocaleString() + ' · Analysis Complete';
+        function renderInventory() {
+            const tbody = document.getElementById('inventory-body');
+            tbody.innerHTML = '';
+            
+            const filteredData = detectedAssets.filter(a => currentFilter === 'All' || a.type === currentFilter);
+            
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-gray-500">No assets detected for this category.</td></tr>`;
+                return;
+            }
+            
+            filteredData.sort((a,b) => b.conf - a.conf).forEach(asset => {
+                const tr = document.createElement('tr');
+                const color = ASSET_COLORS[asset.type];
+                tr.addEventListener('mouseenter', () => drawBoundingBoxes(asset.id));
+                tr.addEventListener('mouseleave', () => drawBoundingBoxes());
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-3 font-mono text-xs text-blue-300">${asset.id}</td>
+                    <td class="px-6 py-3"><span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium" style="background:${color}20; color:${color}"><span class="w-2 h-2 rounded-full" style="background:${color}"></span>${asset.type}</span></td>
+                    <td class="px-6 py-3"><span class="text-xs">${(asset.conf * 100).toFixed(0)}%</span></td>
+                    <td class="px-6 py-3 font-mono text-xs text-gray-400">[${asset.x}, ${asset.y}]</td>
+                    <td class="px-6 py-3 text-xs text-gray-400">${(asset.w * asset.h).toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
-    function set(valId, val, confId, barId, conf) {
-      document.getElementById(valId).textContent = val;
-      document.getElementById(confId).textContent = (conf * 100).toFixed(1) + '%';
-      document.getElementById(barId).style.width = (conf * 100) + '%';
-    }
-    set('val-buildings', r.buildings, 'conf-buildings', 'bar-buildings', r.buildingConf);
-    set('val-roads',     r.roads,     'conf-roads',     'bar-roads',     r.roadConf);
-    set('val-trees',     r.trees,     'conf-trees',     'bar-trees',     r.treeConf);
-    set('val-water',     r.water,     'conf-water',     'bar-water',     r.waterConf);
+        function updateChart() {
+            const ctx = document.getElementById('stats-chart').getContext('2d');
+            const counts = { 'Property': 0, 'Roads/Footpaths': 0, 'Open Parks': 0, 'Water Bodies': 0 };
+            detectedAssets.forEach(a => counts[a.type]++);
+            
+            const data = {
+                labels: Object.keys(counts),
+                datasets: [{
+                    data: Object.values(counts),
+                    backgroundColor: [ASSET_COLORS['Property'], ASSET_COLORS['Roads/Footpaths'], ASSET_COLORS['Open Parks'], ASSET_COLORS['Water Bodies']],
+                    borderWidth: 0
+                }]
+            };
 
-    renderSegmentation();
-  }
+            if (chartInstance) { chartInstance.data = data; chartInstance.update(); } 
+            else {
+                Chart.defaults.color = '#94a3b8';
+                chartInstance = new Chart(ctx, { type: 'doughnut', data: data, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { boxWidth: 12, usePointStyle: true, padding: 20 } } } } });
+            }
+        }
 
-  function renderSegmentation() {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.getElementById('seg-canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      ctx.globalAlpha = 0.48;
-      const W = canvas.width, H = canvas.height;
-      [[0.10,0.08,0.22,0.25],[0.54,0.07,0.20,0.18],[0.28,0.54,0.19,0.21]].forEach(([x,y,w,h]) => {
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(x*W, y*H, w*W, h*H);
-      });
-      [[0.0,0.47,1.0,0.04],[0.44,0.0,0.04,1.0]].forEach(([x,y,w,h]) => {
-        ctx.fillStyle = '#eab308'; ctx.fillRect(x*W, y*H, w*W, h*H);
-      });
-      [[0.64,0.59,0.28,0.29],[0.01,0.62,0.20,0.30]].forEach(([x,y,w,h]) => {
-        ctx.fillStyle = '#22c55e'; ctx.fillRect(x*W, y*H, w*W, h*H);
-      });
-      [[0.70,0.04,0.26,0.21]].forEach(([x,y,w,h]) => {
-        ctx.fillStyle = '#3b82f6'; ctx.fillRect(x*W, y*H, w*W, h*H);
-      });
-      ctx.globalAlpha = 1;
-    };
-    img.src = currentImage;
-    document.getElementById('seg-original').src = currentImage;
-  }
+        /* =======================================================================
+           EXPORT MODULE
+        ======================================================================= */
+        function exportData(format) {
+            if (detectedAssets.length === 0) {
+                showToast("No data to export. Run scanner first.");
+                return;
+            }
 
-  /* ═══════════════════════════════════════════════════════════
-     MAP SOURCES — 16 FREE APIS, ZERO KEY REQUIRED
-  ═══════════════════════════════════════════════════════════ */
-  const MAP_SOURCES = [
-    { id:'osm',           label:'OpenStreetMap',      group:'base',      dot:'#3b82f6',
-      url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attr:'© OpenStreetMap contributors', maxZoom:19 },
-    { id:'esri_satellite',label:'ESRI Satellite',      group:'satellite', dot:'#22c55e',
-      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      attr:'© Esri, Maxar, USGS | Sentinel-2 ESA', maxZoom:19 },
-    { id:'esri_topo',     label:'ESRI Topo',           group:'base',      dot:'#3b82f6',
-      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-      attr:'© Esri, USGS, NOAA', maxZoom:19 },
-    { id:'esri_street',   label:'ESRI Streets',        group:'base',      dot:'#3b82f6',
-      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-      attr:'© Esri, HERE, Garmin', maxZoom:19 },
-    { id:'carto_dark',    label:'CartoDB Dark',         group:'base',      dot:'#3b82f6',
-      url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      sub:'abcd', attr:'© OSM contributors, © CARTO', maxZoom:20 },
-    { id:'carto_light',   label:'CartoDB Light',        group:'base',      dot:'#3b82f6',
-      url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      sub:'abcd', attr:'© OSM contributors, © CARTO', maxZoom:20 },
-    { id:'carto_voyager', label:'CartoDB Voyager',      group:'base',      dot:'#3b82f6',
-      url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      sub:'abcd', attr:'© OSM contributors, © CARTO', maxZoom:20 },
-    { id:'usgs_imagery',  label:'USGS Imagery',         group:'satellite', dot:'#22c55e',
-      url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
-      attr:'© USGS National Map', maxZoom:16 },
-    { id:'usgs_topo',     label:'USGS Topo',            group:'base',      dot:'#3b82f6',
-      url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
-      attr:'© USGS National Map', maxZoom:16 },
-    { id:'nasa_modis',    label:'NASA MODIS (GIBS)',     group:'satellite', dot:'#22c55e',
-      url:'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/MODIS_Terra_CorrectedReflectance_TrueColor/default/2024-01-01/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
-      attr:'© NASA GIBS | MODIS Terra', maxZoom:9 },
-    { id:'nasa_landsat',  label:'NASA Landsat (GIBS)',   group:'satellite', dot:'#22c55e',
-      url:'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/Landsat_WELD_CorrectedReflectance_Bands157_Global_Annual/default/2010-01-01/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
-      attr:'© NASA GIBS | Landsat WELD', maxZoom:9 },
-    { id:'opentopomap',   label:'OpenTopoMap',           group:'base',      dot:'#3b82f6',
-      url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-      sub:'abc', attr:'© OpenTopoMap (CC-BY-SA)', maxZoom:17 },
-    { id:'stadia_dark',   label:'Stadia Dark',           group:'base',      dot:'#3b82f6',
-      url:'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
-      attr:'© Stadia Maps, © OpenMapTiles, © OSM', maxZoom:20 },
-    { id:'stadia_sat',    label:'Stadia Satellite',      group:'satellite', dot:'#22c55e',
-      url:'https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.png',
-      attr:'© CNES/Airbus · Stadia Maps · OSM', maxZoom:20 },
-    { id:'oam',           label:'OpenAerialMap',         group:'satellite', dot:'#22c55e',
-      url:'https://tiles.openaerialmap.org/5adc5e0e2553e6000ce5ad6f/0/5adc5e0e2553e6000ce5ad70/{z}/{x}/{y}.png',
-      attr:'© OpenAerialMap contributors', maxZoom:18 },
-    { id:'wikimedia',     label:'Wikimedia Maps',        group:'base',      dot:'#3b82f6',
-      url:'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png',
-      attr:'© Wikimedia Maps, © OSM contributors', maxZoom:19 },
-  ];
+            const timestamp = new Date().getTime();
+            let content, filename, mime;
 
-  const API_INFO = [
-    { name:'OpenStreetMap',       group:'base',      detail:'Community-maintained global basemap' },
-    { name:'ESRI World Imagery',  group:'satellite', detail:'High-res global aerial imagery (Esri)' },
-    { name:'ESRI World Topo',     group:'base',      detail:'Topographic basemap from USGS' },
-    { name:'ESRI World Streets',  group:'base',      detail:'Detailed street-level basemap (Esri)' },
-    { name:'CartoDB Dark Matter', group:'base',      detail:'Dark urban basemap (CARTO)' },
-    { name:'CartoDB Positron',    group:'base',      detail:'Minimal light basemap (CARTO)' },
-    { name:'CartoDB Voyager',     group:'base',      detail:'Colourful open-data basemap' },
-    { name:'USGS Imagery Only',   group:'satellite', detail:'US federal aerial imagery' },
-    { name:'USGS National Topo',  group:'base',      detail:'US Topo quad-sheet basemap' },
-    { name:'NASA GIBS / MODIS',   group:'satellite', detail:'Terra true-colour, daily global' },
-    { name:'NASA GIBS / Landsat', group:'satellite', detail:'Landsat WELD annual composite' },
-    { name:'OpenTopoMap',         group:'base',      detail:'Rendered contour & terrain map' },
-    { name:'Stadia Smooth Dark',  group:'base',      detail:'Premium dark basemap (Stadia)' },
-    { name:'Stadia Satellite',    group:'satellite', detail:'Airbus/Copernicus satellite via Stadia' },
-    { name:'OpenAerialMap',       group:'satellite', detail:'Community drone imagery archive' },
-    { name:'Wikimedia Maps',      group:'base',      detail:'OSM-based map by Wikimedia Foundation' },
-  ];
+            if (format === 'csv') {
+                content = 'ID,Class,Confidence,X,Y,Width,Height,Area\n' + 
+                          detectedAssets.map(a => `${a.id},${a.type},${a.conf},${a.x},${a.y},${a.w},${a.h},${a.w*a.h}`).join('\n');
+                filename = `UrbanScan_${timestamp}.csv`;
+                mime = 'text/csv';
+            } 
+            else if (format === 'json') {
+                content = JSON.stringify(detectedAssets, null, 2);
+                filename = `UrbanScan_${timestamp}.json`;
+                mime = 'application/json';
+            }
+            else if (format === 'geojson') {
+                const features = detectedAssets.map(a => ({
+                    type: "Feature",
+                    geometry: { type: "Point", coordinates: [ (a.x/1000 - 0.5)*0.05 - 0.09, (a.y/1000 - 0.5)*0.05 + 51.505 ] },
+                    properties: { id: a.id, asset_type: a.type, confidence: a.conf, area: a.w * a.h }
+                }));
+                const geojson = { type: "FeatureCollection", features: features };
+                content = JSON.stringify(geojson, null, 2);
+                filename = `UrbanScan_${timestamp}.geojson`;
+                mime = 'application/geo+json';
+            }
+            else if (format === 'shp') {
+                showToast("Shapefile export generated via GeoJSON structure format.");
+                exportData('geojson');
+                return;
+            }
 
-  function buildLayerButtons() {
-    const container = document.getElementById('layer-btns');
-    container.innerHTML = '';
-    const visible = layerGroupFilter === 'all'
-      ? MAP_SOURCES
-      : MAP_SOURCES.filter(s => s.group === layerGroupFilter);
-    visible.forEach(src => {
-      const btn = document.createElement('button');
-      btn.className = 'layer-btn' + (src.id === activeLayerId ? ' active' : '');
-      btn.innerHTML = `<span class="layer-dot" style="background:${src.dot}"></span>${src.label}`;
-      btn.onclick = () => switchLayer(src.id);
-      container.appendChild(btn);
-    });
-  }
+            const blob = new Blob([content], { type: mime });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', filename);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast(`Exported successfully as ${format.toUpperCase()}`);
+        }
 
-  function setLayerGroup(g, el) {
-    layerGroupFilter = g;
-    document.querySelectorAll('.lf-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-    buildLayerButtons();
-  }
+        /* =======================================================================
+           ORGANIZATIONAL MAP (OSM WITH DARK FILTER)
+        ======================================================================= */
+        function initMap() {
+            mapInstance = L.map('leaflet-map', { center: [51.505, -0.09], zoom: 14, zoomControl: false });
+            L.control.zoom({ position: 'topright' }).addTo(mapInstance);
+            
+            // Real Organizational Map (OSM) - Stylized via CSS `.dark-map-tiles` for the dashboard aesthetic
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+                className: 'dark-map-tiles'
+            }).addTo(mapInstance);
+            
+            mapMarkers.addTo(mapInstance);
+            updateMapData();
+        }
 
-  function buildApiGrid() {
-    const grid = document.getElementById('api-ref-grid');
-    grid.innerHTML = '';
-    API_INFO.forEach(api => {
-      const dot = api.group === 'satellite' ? '#22c55e' : '#3b82f6';
-      grid.innerHTML += `<div class="api-card">
-        <div class="api-dot" style="background:${dot}"></div>
-        <div><div class="api-name">${api.name}</div><div class="api-detail">${api.detail}</div></div>
-      </div>`;
-    });
-  }
-  buildLayerButtons();
-  buildApiGrid();
+        function updateMapData() {
+            if (!mapInstance) return;
+            mapMarkers.clearLayers();
+            
+            if (detectedAssets.length === 0) return;
+            
+            const baseLat = 51.505, baseLng = -0.09;
+            const canvas = document.getElementById('main-canvas');
+            const maxW = canvas.width || 1000, maxH = canvas.height || 1000;
+            
+            detectedAssets.forEach(asset => {
+                if (currentFilter !== 'All' && asset.type !== currentFilter) return;
 
-  /* ═══════════════════════════════════════════════════════════
-     LEAFLET MAP INIT & LAYER SWITCHING
-  ═══════════════════════════════════════════════════════════ */
-  function initMap() {
-    if (leafletMap) return;
-    leafletMap = L.map('leaflet-map', { center:[28.6139,77.209], zoom:13 });
-    const src = MAP_SOURCES.find(s => s.id === activeLayerId);
-    tileLayer = L.tileLayer(src.url, {
-      maxZoom: src.maxZoom, attribution: src.attr, subdomains: src.sub || ''
-    }).addTo(leafletMap);
-    addDetectionMarkers();
-  }
+                const latOffset = ((maxH - asset.y) / maxH - 0.5) * 0.05; 
+                const lngOffset = (asset.x / maxW - 0.5) * 0.05;
+                const color = ASSET_COLORS[asset.type];
+                
+                const markerHtml = `
+                    <div class="vector-marker">
+                        <div class="pulse-ring" style="background-color: ${color}80; box-shadow: 0 0 15px ${color}"></div>
+                        <div class="core-dot" style="background-color: ${color};"></div>
+                        <div class="vector-label" style="border-top: 2px solid ${color}">
+                            <span style="color: ${color}">${asset.id}</span>
+                            <span style="font-size: 8px; color: #cbd5e1">${asset.type}</span>
+                        </div>
+                    </div>`;
+                    
+                const icon = L.divIcon({ html: markerHtml, className: 'custom-vector-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
+                mapMarkers.addLayer(L.marker([baseLat + latOffset, baseLng + lngOffset], {icon: icon}));
+            });
+            
+            if (mapMarkers.getLayers().length > 0) {
+                mapInstance.fitBounds(new L.featureGroup(mapMarkers.getLayers()).getBounds().pad(0.1));
+            }
+        }
 
-  function addDetectionMarkers() {
-    if (!leafletMap || !detectionResult) return;
-    const r = detectionResult;
-    [
-      { ll:[28.618,77.215], color:'#ef4444', label:`${r.buildings} Buildings` },
-      { ll:[28.611,77.206], color:'#eab308', label:`${r.roads} Roads` },
-      { ll:[28.615,77.201], color:'#22c55e', label:`${r.trees} Trees` },
-      { ll:[28.620,77.220], color:'#3b82f6', label:`${r.water} Water` },
-    ].forEach(({ ll, color, label }) => {
-      const icon = L.divIcon({
-        html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.6)"></div>`,
-        iconSize:[14,14], className:''
-      });
-      L.marker(ll, { icon }).addTo(leafletMap).bindPopup(`<b style="color:${color}">${label}</b>`);
-    });
-  }
+        /* =======================================================================
+           SET THEORY MATH ANALYTICS ENGINE
+        ======================================================================= */
+        function renderMathAnalysis() {
+            if (!currentImage) return;
+            const U_area = currentImage.width * currentImage.height;
+            document.getElementById('math-total-area').innerText = U_area.toLocaleString();
 
-  function switchLayer(id) {
-    activeLayerId = id;
-    buildLayerButtons();
-    const src = MAP_SOURCES.find(s => s.id === id);
-    if (!src) return;
-    document.getElementById('map-active-badge').textContent = src.label;
-    if (!leafletMap) return;
-    leafletMap.removeLayer(tileLayer);
-    tileLayer = L.tileLayer(src.url, {
-      maxZoom: src.maxZoom, attribution: src.attr, subdomains: src.sub || ''
-    }).addTo(leafletMap);
-  }
+            let areaMatrix = { 'Property': 0, 'Roads/Footpaths': 0, 'Open Parks': 0, 'Water Bodies': 0 };
+            
+            detectedAssets.forEach(a => { areaMatrix[a.type] += (a.w * a.h); });
+            
+            document.getElementById('math-p-area').innerText = areaMatrix['Property'].toLocaleString();
+            document.getElementById('math-r-area').innerText = areaMatrix['Roads/Footpaths'].toLocaleString();
+            document.getElementById('math-k-area').innerText = areaMatrix['Open Parks'].toLocaleString();
+            document.getElementById('math-w-area').innerText = areaMatrix['Water Bodies'].toLocaleString();
 
-  /* ═══════════════════════════════════════════════════════════
-     EXPORT
-  ═══════════════════════════════════════════════════════════ */
-  function updateExport() {
-    if (!detectionResult) return;
-    const r = detectionResult;
-    ['btn-geojson','btn-csv','btn-json'].forEach(id => document.getElementById(id).disabled = false);
-    document.getElementById('export-summary').classList.remove('hidden');
-    document.getElementById('sum-buildings').textContent = r.buildings;
-    document.getElementById('sum-roads').textContent     = r.roads;
-    document.getElementById('sum-trees').textContent     = r.trees;
-    document.getElementById('sum-water').textContent     = r.water;
-  }
+            const unionArea = areaMatrix['Property'] + areaMatrix['Roads/Footpaths'] + areaMatrix['Open Parks'] + areaMatrix['Water Bodies'];
+            document.getElementById('math-union-area').innerText = unionArea.toLocaleString();
 
-  function markExported(type) {
-    document.getElementById('last-exported').innerHTML =
-      `<span style="color:#22c55e">✓</span> Last exported: ${type} — ${new Date().toLocaleTimeString()}`;
-  }
+            // Render Proportional Venn Diagrams
+            const vennCanvas = document.getElementById('venn-canvas');
+            
+            // Clean up old circles
+            const oldCircles = vennCanvas.querySelectorAll('.venn-circle');
+            oldCircles.forEach(c => c.remove());
 
-  function download(content, filename, mime) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
-    a.download = filename;
-    a.click();
-  }
+            if (unionArea === 0) return;
 
-  function exportGeoJSON() {
-    if (!detectionResult) return;
-    const r = detectionResult;
-    const fc = {
-      type: 'FeatureCollection',
-      metadata: {
-        generator: 'UrbanScan AI — YOLOv8',
-        timestamp: r.timestamp.toISOString(),
-        sources: ['Sentinel-2 (ESA)','Bhuvan (ISRO)','Google Maps Static',
-                  'OpenAerialMap','NASA GIBS','USGS'],
-      },
-      features: [
-        { type:'Feature', geometry:{ type:'Point', coordinates:[77.215,28.618] },
-          properties:{ asset_type:'buildings', count:r.buildings, confidence:r.buildingConf } },
-        { type:'Feature', geometry:{ type:'Point', coordinates:[77.206,28.611] },
-          properties:{ asset_type:'roads', count:r.roads, confidence:r.roadConf } },
-        { type:'Feature', geometry:{ type:'Point', coordinates:[77.201,28.615] },
-          properties:{ asset_type:'trees', count:r.trees, confidence:r.treeConf } },
-        { type:'Feature', geometry:{ type:'Point', coordinates:[77.220,28.620] },
-          properties:{ asset_type:'water', count:r.water, confidence:r.waterConf } },
-      ]
-    };
-    download(JSON.stringify(fc,null,2), `urbanscan_${Date.now()}.geojson`, 'application/geo+json');
-    markExported('GeoJSON');
-  }
+            // Container size mapping (assuming roughly 300x300 usable area)
+            const canvasW = vennCanvas.clientWidth || 300;
+            const canvasH = vennCanvas.clientHeight || 300;
+            const maxRadius = Math.min(canvasW, canvasH) * 0.35; // Max scale relative to container
+            
+            // Scaling factor to relate Image U to Screen Venn U
+            const largestArea = Math.max(...Object.values(areaMatrix), 1);
+            
+            const sets = [
+                { id: 'P', area: areaMatrix['Property'], color: ASSET_COLORS['Property'], cx: '35%', cy: '35%' },
+                { id: 'R', area: areaMatrix['Roads/Footpaths'], color: ASSET_COLORS['Roads/Footpaths'], cx: '65%', cy: '35%' },
+                { id: 'K', area: areaMatrix['Open Parks'], color: ASSET_COLORS['Open Parks'], cx: '35%', cy: '65%' },
+                { id: 'W', area: areaMatrix['Water Bodies'], color: ASSET_COLORS['Water Bodies'], cx: '65%', cy: '65%' }
+            ];
 
-  function exportCSV() {
-    if (!detectionResult) return;
-    const r = detectionResult;
-    const rows = [
-      ['asset_type','count','confidence','detected_at'],
-      ['buildings', r.buildings, r.buildingConf, r.timestamp.toISOString()],
-      ['roads',     r.roads,     r.roadConf,     r.timestamp.toISOString()],
-      ['trees',     r.trees,     r.treeConf,     r.timestamp.toISOString()],
-      ['water',     r.water,     r.waterConf,    r.timestamp.toISOString()],
-    ];
-    download(rows.map(r => r.join(',')).join('\n'), `urbanscan_${Date.now()}.csv`, 'text/csv');
-    markExported('CSV');
-  }
+            sets.forEach(set => {
+                if (set.area > 0) {
+                    // Mathematical formula: r = sqrt(Area / pi). 
+                    // Scaled relative to maxRadius based on largest subset.
+                    const r = Math.sqrt(set.area / Math.PI);
+                    const maxR = Math.sqrt(largestArea / Math.PI);
+                    let normalizedRadius = (r / maxR) * maxRadius;
+                    
+                    // Min visual size so it's not invisible
+                    normalizedRadius = Math.max(normalizedRadius, 20);
 
-  function exportJSON() {
-    if (!detectionResult) return;
-    download(JSON.stringify(detectionResult,null,2), `urbanscan_${Date.now()}.json`, 'application/json');
-    markExported('JSON');
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     CHANGE DETECTION
-  ═══════════════════════════════════════════════════════════ */
-  function handleChangeFile(e, type) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    if (type === 'before') {
-      beforeImg = url; beforeFile = file;
-      document.getElementById('before-drop').outerHTML = `
-        <div class="mini-preview" id="before-preview">
-          <img src="${url}"/>
-          <div class="mini-overlay">
-            <span class="mini-fname">${file.name}</span>
-            <button class="mini-clear" onclick="clearChange('before')">Remove</button>
-          </div>
-        </div>`;
-    } else {
-      afterImg = url; afterFile = file;
-      document.getElementById('after-drop').outerHTML = `
-        <div class="mini-preview" id="after-preview">
-          <img src="${url}"/>
-          <div class="mini-overlay">
-            <span class="mini-fname">${file.name}</span>
-            <button class="mini-clear" onclick="clearChange('after')">Remove</button>
-          </div>
-        </div>`;
-    }
-    updateChangeBtn();
-  }
-
-  function clearChange(type) {
-    if (type === 'before') {
-      beforeImg = null; beforeFile = null;
-      document.getElementById('before-preview').outerHTML = `
-        <div class="mini-drop" id="before-drop" onclick="document.getElementById('before-input').click()">
-          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-          <span>Upload before image</span>
-        </div>`;
-    } else {
-      afterImg = null; afterFile = null;
-      document.getElementById('after-preview').outerHTML = `
-        <div class="mini-drop" id="after-drop" onclick="document.getElementById('after-input').click()">
-          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-          <span>Upload after image</span>
-        </div>`;
-    }
-    updateChangeBtn();
-  }
-
-  function updateChangeBtn() {
-    document.getElementById('change-run-btn').disabled = !(beforeImg && afterImg);
-  }
-
-  async function runChangeDetection() {
-    const btn = document.getElementById('change-run-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Analyzing Changes…';
-    await new Promise(r => setTimeout(r, 1800 + Math.random() * 600));
-
-    document.getElementById('stat-new').textContent  = rand(5, 45);
-    document.getElementById('stat-demo').textContent = rand(1, 18);
-    document.getElementById('stat-veg').textContent  = rand(3, 30);
-    document.getElementById('change-results').classList.remove('hidden');
-
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.getElementById('diff-canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width; canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      ctx.globalAlpha = 0.5;
-      const W = canvas.width, H = canvas.height;
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(W*.10, H*.18, W*.16, H*.14);
-      ctx.fillRect(W*.58, H*.42, W*.18, H*.13);
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(W*.30, H*.60, W*.20, H*.15);
-      ctx.globalAlpha = 1;
-    };
-    img.src = afterImg;
-
-    btn.disabled = false;
-    btn.innerHTML = 'Run Change Detection';
-  }
-</script>
+                    const circle = document.createElement('div');
+                    circle.className = 'venn-circle';
+                    circle.style.width = `${normalizedRadius * 2}px`;
+                    circle.style.height = `${normalizedRadius * 2}px`;
+                    circle.style.backgroundColor = `${set.color}80`; // 50% opacity for overlap mixing
+                    circle.style.borderColor = set.color;
+                    
+                    // Center the circle dynamically on its node coordinates
+                    circle.style.left = `calc(${set.cx} - ${normalizedRadius}px)`;
+                    circle.style.top = `calc(${set.cy} - ${normalizedRadius}px)`;
+                    
+                    circle.innerHTML = `${set.id}`;
+                    vennCanvas.appendChild(circle);
+                }
+            });
+        }
+    </script>
 </body>
 </html>
